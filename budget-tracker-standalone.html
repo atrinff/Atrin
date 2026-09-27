@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>بودجه ماهانه</title>
+<style>
+  :root{
+    --bg:#F7F5F0; --card:#FFFFFF; --ink:#22201C; --sub:#6B655C;
+    --line:#E4E0D8; --accent:#3E6B4F; --accent-soft:#E7F0E9;
+    --warn:#B4472A; --warn-soft:#FBEAE4;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1A17; --card:#242220; --ink:#EDEAE3; --sub:#A39C90;
+      --line:#3A3630; --accent:#7FB894; --accent-soft:#243228;
+      --warn:#E08063; --warn-soft:#332420;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1B1A17; --card:#242220; --ink:#EDEAE3; --sub:#A39C90;
+    --line:#3A3630; --accent:#7FB894; --accent-soft:#243228;
+    --warn:#E08063; --warn-soft:#332420;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Vazirmatn","Tahoma",sans-serif;
+    padding:20px 14px 32px; max-width:640px; margin:0 auto;
+  }
+  h1{font-size:1.15rem; font-weight:700; margin:0 0 2px;}
+  .sub{color:var(--sub); font-size:0.85rem; margin:0 0 18px;}
+  .status{font-size:0.72rem; color:var(--sub); margin:-10px 0 14px;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    overflow:hidden; margin-bottom:16px;
+  }
+  table{width:100%; border-collapse:collapse; font-size:0.88rem;}
+  th,td{padding:10px 10px; text-align:right; border-bottom:1px solid var(--line);}
+  th{color:var(--sub); font-weight:600; font-size:0.78rem;}
+  td.cat{white-space:nowrap;}
+  input{
+    width:100%; max-width:110px; border:1px solid var(--line); border-radius:8px;
+    background:transparent; color:var(--ink); padding:6px 8px; font-size:0.86rem;
+    font-family:inherit; text-align:left; direction:ltr;
+  }
+  input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .diff{font-weight:600;}
+  .diff.pos{color:var(--accent);}
+  .diff.neg{color:var(--warn);}
+  tfoot td{font-weight:700; border-bottom:none; border-top:2px solid var(--line);}
+  .bar-wrap{background:var(--line); border-radius:6px; height:6px; margin-top:5px; overflow:hidden;}
+  .bar{height:100%; background:var(--accent); border-radius:6px;}
+  .bar.over{background:var(--warn);}
+  .summary{display:flex; gap:10px; margin-bottom:16px; overflow-x:auto;}
+  .stat{
+    flex:1; min-width:100px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:12px; text-align:center;
+  }
+  .stat .num{font-size:1.15rem; font-weight:700;}
+  .stat .label{font-size:0.72rem; color:var(--sub); margin-top:2px;}
+  .stat.warn .num{color:var(--warn);}
+  .stat.ok .num{color:var(--accent);}
+  .savings-card{
+    background:var(--accent-soft); border:1px solid var(--line); border-radius:14px;
+    padding:16px; margin-bottom:16px; text-align:center;
+  }
+  .savings-card .num{font-size:1.6rem; font-weight:800; color:var(--accent);}
+  .savings-card .label{font-size:0.8rem; color:var(--sub); margin-top:2px;}
+  .history{font-size:0.75rem; color:var(--sub); margin-top:10px; text-align:right;}
+  .history div{padding:3px 0; border-top:1px solid var(--line);}
+  .row-buttons{display:flex; gap:8px; margin-top:16px;}
+  button.act{
+    flex:1; border:1px solid var(--line); border-radius:10px; padding:10px;
+    font-family:inherit; font-size:0.82rem; background:var(--card); color:var(--ink);
+  }
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+</style>
+</head>
+<body>
+  <h1>بودجه ماهانه بورسیه</h1>
+  <p class="sub">هر ماه مبلغ واقعی خرج‌شده رو وارد کن؛ روی همین مرورگر ذخیره می‌مونه</p>
+  <p class="status" id="status"></p>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>دسته</th><th>بودجه</th><th>خرج واقعی</th><th>باقی‌مانده</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+      <tfoot>
+        <tr>
+          <td>جمع</td>
+          <td id="totalBudget"></td>
+          <td id="totalActual"></td>
+          <td id="totalDiff"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="savings-card">
+    <div class="num" id="totalSavings"></div>
+    <div class="label">کل پس‌انداز تا الان</div>
+    <div class="history" id="history"></div>
+  </div>
+
+  <div class="row-buttons">
+    <button class="act primary" id="closeMonthBtn">ثبت پس‌انداز این ماه و شروع ماه جدید</button>
+    <button class="act" id="resetBtn">پاک کردن خرج‌های این ماه</button>
+  </div>
+
+<script>
+const categories = [
+  {id:"food", name:"🍚 غذا و خوراک", budget:400000},
+  {id:"transport", name:"🚇 حمل‌ونقل", budget:70000},
+  {id:"sim", name:"📱 سیم‌کارت/اینترنت", budget:40000},
+  {id:"hygiene", name:"🧴 بهداشت و لوازم شخصی", budget:70000},
+  {id:"cafe", name:"☕ کافه/تفریح/خریدهای کوچک", budget:150000},
+  {id:"study", name:"📚 درس و لوازم دانشگاه", budget:50000},
+  {id:"trip", name:"🧳 سفر/تفریح بزرگ", budget:100000},
+  {id:"saving", name:"💰 پس‌انداز", budget:353000},
+  {id:"dorm", name:"خوابگاه", budget:167000},
+];
+
+const STORAGE_KEY = "budget-state-v2";
+let state = { actuals:{}, totalSavings:0, history:[] };
+try{
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw) state = JSON.parse(raw);
+}catch(e){}
+
+function fmt(n){ return Math.round(n||0).toLocaleString("en-US") + "₩"; }
+
+let saveTimer = null;
+function scheduleSave(){
+  document.getElementById("status").textContent = "در حال ذخیره…";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      document.getElementById("status").textContent = "ذخیره شد ✓";
+    }catch(e){
+      document.getElementById("status").textContent = "ذخیره نشد، دوباره امتحان کن";
+    }
+  }, 300);
+}
+
+function render(){
+  const rowsEl = document.getElementById("rows");
+  rowsEl.innerHTML = "";
+  let totalBudget=0, totalActual=0;
+
+  categories.forEach(cat=>{
+    const actual = Number(state.actuals[cat.id]) || 0;
+    const diff = cat.budget - actual;
+    totalBudget += cat.budget;
+    totalActual += actual;
+    const pct = cat.budget>0 ? Math.min(100,(actual/cat.budget)*100) : 0;
+    const over = actual > cat.budget;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="cat">${cat.name}
+        <div class="bar-wrap"><div class="bar ${over?'over':''}" style="width:${pct}%"></div></div>
+      </td>
+      <td>${fmt(cat.budget)}</td>
+      <td><input type="number" inputmode="numeric" data-id="${cat.id}" value="${state.actuals[cat.id]||""}" placeholder="0"></td>
+      <td class="diff ${diff<0?'neg':'pos'}">${fmt(diff)}</td>`;
+    rowsEl.appendChild(tr);
+  });
+
+  document.getElementById("totalBudget").textContent = fmt(totalBudget);
+  document.getElementById("totalActual").textContent = fmt(totalActual);
+  const totalDiff = totalBudget - totalActual;
+  const totalDiffEl = document.getElementById("totalDiff");
+  totalDiffEl.textContent = fmt(totalDiff);
+  totalDiffEl.className = totalDiff<0?'neg':'pos';
+
+  const remainingPct = totalBudget>0 ? Math.round((totalDiff/totalBudget)*100) : 0;
+  document.getElementById("summary").innerHTML = `
+    <div class="stat"><div class="num">${fmt(totalBudget)}</div><div class="label">کل بودجه</div></div>
+    <div class="stat"><div class="num">${fmt(totalActual)}</div><div class="label">خرج شده</div></div>
+    <div class="stat ${totalDiff<0?'warn':'ok'}"><div class="num">${fmt(totalDiff)}</div><div class="label">باقی‌مانده (${remainingPct}%)</div></div>`;
+
+  document.getElementById("totalSavings").textContent = fmt(state.totalSavings);
+
+  const histEl = document.getElementById("history");
+  if(state.history && state.history.length){
+    histEl.innerHTML = state.history.slice().reverse().slice(0,6).map(h=>
+      `<div>${h.date} — پس‌انداز این ماه: ${fmt(h.amount)}</div>`
+    ).join("");
+  } else {
+    histEl.innerHTML = "";
+  }
+
+  rowsEl.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("input", e=>{
+      const id = e.target.dataset.id;
+      state.actuals[id] = e.target.value === "" ? 0 : Number(e.target.value);
+      render();
+      const newInp = document.querySelector(`input[data-id="${id}"]`);
+      if(newInp){ newInp.focus(); newInp.setSelectionRange(newInp.value.length, newInp.value.length); }
+      scheduleSave();
+    });
+  });
+}
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  state.actuals = {};
+  render();
+  scheduleSave();
+});
+
+document.getElementById("closeMonthBtn").addEventListener("click", ()=>{
+  const savedAmount = Number(state.actuals["saving"]) || 0;
+  state.totalSavings = (state.totalSavings||0) + savedAmount;
+  const d = new Date();
+  state.history = state.history || [];
+  state.history.push({date: d.toLocaleDateString("fa-IR", {year:"numeric", month:"long"}), amount: savedAmount});
+  state.actuals = {};
+  render();
+  scheduleSave();
+});
+
+render();
+document.getElementById("status").textContent = "روی همین مرورگر ذخیره می‌شه";
+</script>
+</body>
+</html>
